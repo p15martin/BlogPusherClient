@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009"
+					   xmlns:s="library://ns.adobe.com/flex/spark"
+					   xmlns:mx="library://ns.adobe.com/flex/mx">
+
+	<fx:Declarations>
+	</fx:Declarations>
+
+	<fx:Script>
+		<![CDATA[
+			import com.pusher.Pusher;
+			import com.pusher.channel.Channel;
+
+			import mx.rpc.AsyncToken;
+			import mx.rpc.Responder;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			import mx.rpc.http.HTTPService;
+
+			private function connect() : void
+			{
+				Pusher.enableWebSocketLogging = true;
+				Pusher.log = log;
+
+				var pusher : Pusher = new Pusher( pusherKey.text, "http://experiencecraftsmanship.com" );
+				pusher.bindAll( pusherCallback );
+
+				var channel : Channel = pusher.subscribe("test_channel");
+				channel.bind( "my_event", eventCallback );
+			}
+
+			private function pusherCallback( eventName : String, data : Object ) : void
+			{
+				console( eventName );
+			}
+
+			private function eventCallback( message : String ) : void
+			{
+				console( message );
+			}
+
+			private function log( message : String ) : void
+			{
+				trace( message );
+			}
+
+			private function console( message : String ) : void
+			{
+				messages.text = messages.text + message + "\n";
+			}
+
+			private function sendMessage() : void
+			{
+				var object : Object = new Object();
+				object.jsonrpc = "2.0";
+				object.method = "add";
+				object.params = [1, 2];
+				object.id = 2;
+
+				var message : String = JSON.stringify( object );
+
+				jsonRequest.text = jsonRequest.text + message + "\n";
+
+				var httpService:HTTPService = new HTTPService();
+				httpService.method = "POST";
+				httpService.url = herokuUrl.text;
+				httpService.contentType = "application/json";
+				httpService.headers = { Accept:"application/json" };
+				httpService.resultFormat = HTTPService.RESULT_FORMAT_TEXT;
+
+				var token : AsyncToken = httpService.send(message);
+				token.addResponder( new mx.rpc.Responder( handleResult, handleFault ) );
+			}
+
+			private function handleResult( event : ResultEvent ) : void
+			{
+				jsonResponse.text = jsonResponse.text + ( event.result as String ) + "\n";
+			}
+
+			private function handleFault( event : FaultEvent ) : void
+			{
+				jsonResponse.text = jsonResponse.text + ( event.fault.faultDetail ) + "\n";
+			}
+
+		]]>
+	</fx:Script>
+
+	<s:Form width="100%" height="100%">
+		<s:FormHeading label="Node.js / JSON-RPC / Pusher / Heroku" />
+
+		<s:FormItem>
+			<s:layout>
+				<s:HorizontalLayout />
+			</s:layout>
+
+			<s:Button label="Connect to Pusher" click="connect()" />
+			<s:Button label="Send JSON-RPC message to Node" click="sendMessage()" />
+		</s:FormItem>
+
+		<s:FormItem label="Pusher key">
+			<s:TextInput id="pusherKey" text="b34b58fc40c305167108" width="100%" />
+		</s:FormItem>
+
+		<s:FormItem label="Heroku url">
+			<s:TextInput id="herokuUrl" text="http://sharp-ocean-2497.herokuapp.com" width="100%" />
+		</s:FormItem>
+
+		<s:FormItem label="JSON-RPC request">
+			<s:TextArea id="jsonRequest" width="100%" editable="false" />
+		</s:FormItem>
+
+		<s:FormItem label="JSON-RPC response">
+			<s:TextArea id="jsonResponse" width="100%" editable="false" />
+		</s:FormItem>
+
+		<s:FormItem label="Pusher messages">
+			<s:TextArea id="messages" width="100%" editable="false" />
+		</s:FormItem>
+	</s:Form>
+
+</s:WindowedApplication>
